@@ -8,6 +8,15 @@ body { margin: 0; font-family: "IBM Plex Sans", -apple-system, "Segoe UI", syste
 .top { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: #161616; color: #fff; }
 .top h1 { font-size: 18px; margin: 0; font-weight: 600; }
 .badge { font-size: 12px; background: #393939; padding: 2px 8px; border-radius: 10px; }
+.spacer { flex: 1; }
+.btn { background: var(--accent); color: #fff; padding: 8px 14px; cursor: pointer; font: inherit; border: 0; }
+.btn.secondary { background: #393939; }
+.btn[hidden] { display: none; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.visually-hidden:focus-visible + .btn, .btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.import-msg { margin: 12px 24px 0; padding: 8px 12px; background: #defbe6; border-left: 3px solid #198038; }
+.import-msg.error { background: #fff1f1; border-left-color: #da1e28; }
+.import-msg[hidden] { display: none; }
 .layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; padding: 16px 24px; align-items: start; }
 @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
