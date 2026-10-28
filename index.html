@@ -9,8 +9,13 @@
 <body>
   <header class="top">
     <h1>Kundenaktivitäten</h1>
-    <span class="badge">Prototyp mit Beispieldaten</span>
+    <span class="badge" id="badge">Prototyp mit Beispieldaten</span>
+    <span class="spacer"></span>
+    <input id="file" type="file" accept=".csv,text/csv" class="visually-hidden">
+    <label class="btn" for="file">Daten laden (CSV)</label>
+    <button type="button" id="resetData" class="btn secondary" hidden>Beispieldaten</button>
   </header>
+  <div id="importMsg" class="import-msg" role="status" hidden></div>
 
   <main class="layout">
     <section class="content">
