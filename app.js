@@ -222,7 +222,10 @@
     });
     var rows = parseCsv(text, best);
     if (rows.length < 2) throw new Error("Die CSV-Datei braucht eine Kopfzeile und mindestens eine Datenzeile.");
-    var header = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    // Spaltennamen tolerant: Groß/Klein, Leerzeichen, Umlaute ("Umsatz Mio" = umsatzmio, "Aktivität_datum" = aktivitaet_datum)
+    var header = rows[0].map(function (h) {
+      return h.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9_]/g, "");
+    });
     ["name", "branche", "mitarbeiter", "umsatzmio"].forEach(function (col) {
       if (header.indexOf(col) === -1) throw new Error("Spalte \"" + col + "\" fehlt in der Kopfzeile.");
     });
@@ -256,8 +259,12 @@
     return list;
   }
 
-  // UTF-8 (auch mit BOM), sonst Windows-1252 (typisch für Excel-Export)
+  // UTF-16 (Excel "Unicode-Text"), UTF-8 (auch mit BOM), sonst Windows-1252 (typisch für Excel-Export)
   function decode(buf) {
+    var b = new Uint8Array(buf);
+    if (b[0] === 0x50 && b[1] === 0x4B) throw new Error("Das ist eine Excel-Datei (.xlsx). Bitte in Excel mit „Speichern unter“ als „CSV“ speichern und diese Datei laden.");
+    if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder("utf-16le").decode(buf);
+    if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder("utf-16be").decode(buf);
     try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
     catch (e) { return new TextDecoder("windows-1252").decode(buf); }
   }
