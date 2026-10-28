@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kundenaktivitäten Dashboard (Prototyp)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Kundenaktivitäten</h1>
+    <span class="badge">Prototyp mit Beispieldaten</span>
+  </header>
+
+  <main class="layout">
+    <section class="content">
+      <div class="kpis" id="kpis"></div>
+
+      <div class="filters">
+        <input id="search" type="search" placeholder="Kunde suchen" aria-label="Kunde suchen">
+        <select id="branche" aria-label="Branche filtern"></select>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>Umsatz nach Branche (Mio. €)</h2>
+          <div id="chart"></div>
+        </div>
+        <div class="card">
+          <h2>Offene Aktivitäten</h2>
+          <ul id="open" class="list"></ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Kunden</h2>
+        <table id="table">
+          <thead>
+            <tr>
+              <th data-key="name">Kunde</th>
+              <th data-key="branche">Branche</th>
+              <th data-key="mitarbeiter" class="num">Mitarbeiter</th>
+              <th data-key="umsatzMio" class="num">Umsatz (Mio. €)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="detail" hidden></div>
+    </section>
+
+    <aside class="copilot" aria-label="Copilot">
+      <h2>Copilot</h2>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="chat">
+        <input id="q" type="text" placeholder="Frage stellen, z. B. Top-Kunden nach Umsatz" aria-label="Frage an den Copilot" autocomplete="off">
+        <button type="submit">Senden</button>
+      </form>
+      <!-- Später: hier das watsonx-Orchestrate-Webchat-Widget einbinden und den Mock in app.js entfernen. -->
+    </aside>
+  </main>
+
+  <script src="data/customers.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
