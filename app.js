@@ -1,6 +1,8 @@
 (function () {
   "use strict";
-  var data = window.CUSTOMERS || [];
+  var demoData = window.CUSTOMERS || [];
+  var data = demoData;
+  var branchen = [];
   var state = { search: "", branche: "Alle", sortKey: "umsatzMio", sortDir: -1, selected: null };
 
   var fmt = new Intl.NumberFormat("de-DE");
@@ -104,10 +106,11 @@
     box.hidden = false;
     box.textContent = "";
     box.appendChild(el("h2", c.name + " · " + c.land));
+    var h = c.hinweise || {};
     var meta = [
       ["Branche", c.branche, c.quellen.branche],
-      ["Mitarbeiter", fmt.format(c.mitarbeiter), c.quellen.mitarbeiter],
-      ["Umsatz", fmt.format(c.umsatzMio) + " Mio. €", c.quellen.umsatz]
+      ["Mitarbeiter", fmt.format(c.mitarbeiter) + (h.mitarbeiter ? " (" + h.mitarbeiter + ")" : ""), c.quellen.mitarbeiter],
+      ["Umsatz", fmt.format(c.umsatzMio) + " Mio. €" + (h.umsatz ? " (" + h.umsatz + ")" : ""), c.quellen.umsatz]
     ];
     meta.forEach(function (m) {
       var p = el("p", m[0] + ": " + m[1]);
@@ -128,8 +131,16 @@
   }
 
   // Filter und Sortierung
-  var branchen = ["Alle"].concat(Array.from(new Set(data.map(function (c) { return c.branche; }))).sort());
-  branchen.forEach(function (b) { var o = el("option", b); o.value = b; $("branche").appendChild(o); });
+  function setData(list) {
+    data = list;
+    state.branche = "Alle"; state.search = ""; state.selected = null;
+    $("search").value = "";
+    branchen = ["Alle"].concat(Array.from(new Set(data.map(function (c) { return c.branche; }))).sort());
+    var sel = $("branche");
+    sel.textContent = "";
+    branchen.forEach(function (b) { var o = el("option", b); o.value = b; sel.appendChild(o); });
+    render();
+  }
   $("branche").addEventListener("change", function (e) { state.branche = e.target.value; render(); });
   $("search").addEventListener("input", function (e) { state.search = e.target.value; render(); });
   Array.prototype.forEach.call(document.querySelectorAll("th[data-key]"), function (th) {
@@ -139,6 +150,190 @@
       state.sortKey = k;
       render();
     });
+  });
+
+  // ---- Datenimport (lokal, die Datei verlässt den Browser nie) ----
+  // CSV: eine Zeile pro Aktivität, Kundenspalten wiederholt. Gleiche id (sonst gleicher Name) = ein Kunde.
+  function parseCsv(text, d) {
+    var rows = [], row = [], f = "", q = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      if (q) {
+        if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+        else f += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === d) { row.push(f); f = ""; }
+      else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(f); rows.push(row); row = []; f = "";
+      } else f += ch;
+    }
+    if (q) throw new Error("CSV ungültig: Anführungszeichen nicht geschlossen.");
+    if (f !== "" || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (c) { return c.trim() !== ""; }); });
+  }
+
+  // "1.200" -> 1200, "310,5" -> 310.5, "1.234,5" -> 1234.5. Nicht lesbar: Text bleibt, validate() meldet es.
+  function num(s) {
+    var t = s.replace(/[\s\u00a0€]/g, "");
+    if (t === "") return s;
+    var dot = t.lastIndexOf("."), com = t.lastIndexOf(",");
+    if (dot !== -1 && com !== -1) t = dot > com ? t.replace(/,/g, "") : t.replace(/\./g, "").replace(",", ".");
+    else if (com !== -1) t = t.split(",").length > 2 ? t.replace(/,/g, "") : t.replace(",", ".");
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+    var n = Number(t);
+    return isNaN(n) ? s : n;
+  }
+
+  // Liest die erste Zahl aus Text wie "~49.000 (Gruppe)", "350+" oder "47,1 (USD)".
+  // Zusätze (ca., mindestens, Klammertext) werden als Hinweis aufbewahrt.
+  function numInfo(s) {
+    var m = s.match(/\d[\d.,]*\d|\d/);
+    if (!m) return { value: s, note: "" };
+    var v = num(m[0]);
+    if (typeof v !== "number") return { value: s, note: "" };
+    var before = s.slice(0, m.index), after = s.slice(m.index + m[0].length), notes = [];
+    if (/(~|≈|\bca\.?)\s*$/i.test(before)) notes.push("ca. Wert");
+    if (/^\s*\+/.test(after)) notes.push("Mindestwert");
+    var p = after.match(/\(([^)]*)\)/);
+    if (p && p[1].trim()) notes.push(p[1].trim());
+    return { value: v, note: notes.join(", ") };
+  }
+
+  // "22.10.26" -> "2026-10-22". Andere Formate bleiben unverändert.
+  function isoDate(s) {
+    var m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+    if (!m) return s;
+    return (m[3].length === 2 ? "20" + m[3] : m[3]) + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2);
+  }
+
+  // Salesforce-Status: Open, Not Started, In Progress, Waiting, Deferred gelten als offen, alles andere als erledigt.
+  function normStatus(s) {
+    return /^(open|offen|not started|nicht begonnen|in progress|in bearbeitung|waiting|deferred)/i.test(s.trim()) ? "offen" : "erledigt";
+  }
+
+  function csvToCustomers(text) {
+    text = text.replace(/^\uFEFF/, "");
+    var first = text.split(/\r?\n/)[0] || "";
+    var best = ";", bestN = -1;
+    [";", ",", "\t"].forEach(function (d) {
+      var n = first.split(d).length - 1;
+      if (n > bestN) { best = d; bestN = n; }
+    });
+    var rows = parseCsv(text, best);
+    if (rows.length < 2) throw new Error("Die CSV-Datei braucht eine Kopfzeile und mindestens eine Datenzeile.");
+    var header = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    ["name", "branche", "mitarbeiter", "umsatzmio"].forEach(function (col) {
+      if (header.indexOf(col) === -1) throw new Error("Spalte \"" + col + "\" fehlt in der Kopfzeile.");
+    });
+    function cell(r, n) { var i = header.indexOf(n); return i < 0 || r[i] === undefined ? "" : r[i].trim(); }
+    var map = {}, list = [];
+    rows.slice(1).forEach(function (r, i) {
+      var key = cell(r, "id") || cell(r, "name");
+      if (!key) throw new Error("Zeile " + (i + 2) + ": weder \"id\" noch \"name\" angegeben.");
+      var c = map[key];
+      if (!c) {
+        var mi = numInfo(cell(r, "mitarbeiter")), um = numInfo(cell(r, "umsatzmio"));
+        c = map[key] = {
+          id: cell(r, "id") || undefined, name: cell(r, "name"), branche: cell(r, "branche"), land: cell(r, "land"),
+          mitarbeiter: mi.value, umsatzMio: um.value,
+          hinweise: { mitarbeiter: mi.note, umsatz: um.note },
+          quellen: { branche: cell(r, "quelle_branche"), mitarbeiter: cell(r, "quelle_mitarbeiter"), umsatz: cell(r, "quelle_umsatz") },
+          activities: []
+        };
+        list.push(c);
+      }
+      var a = { datum: isoDate(cell(r, "aktivitaet_datum")), typ: cell(r, "aktivitaet_typ"),
+                status: cell(r, "aktivitaet_status"), text: cell(r, "aktivitaet_text") };
+      if (!(a.datum || a.typ || a.status || a.text)) return;
+      a.status = normStatus(a.status);
+      // Doppelte Zeilen (gleiche Aktivität beim selben Kunden) nur einmal übernehmen
+      var dup = c.activities.some(function (x) {
+        return x.datum === a.datum && x.typ === a.typ && x.status === a.status && x.text === a.text;
+      });
+      if (!dup) c.activities.push(a);
+    });
+    return list;
+  }
+
+  // UTF-8 (auch mit BOM), sonst Windows-1252 (typisch für Excel-Export)
+  function decode(buf) {
+    try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+    catch (e) { return new TextDecoder("windows-1252").decode(buf); }
+  }
+
+  function isStr(v) { return typeof v === "string" && v.trim() !== ""; }
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+  function str(v, fallback) { return isStr(v) ? v : fallback; }
+
+  // Prüft und normalisiert. Wirft Error mit verständlicher Meldung.
+  function validate(raw) {
+    if (!Array.isArray(raw) || !raw.length) throw new Error("Die Datei enthält keine Kunden.");
+    var ids = {};
+    return raw.map(function (c, i) {
+      var pos = "Eintrag " + (i + 1) + ": ";
+      if (!c || typeof c !== "object") throw new Error(pos + "ist kein Objekt.");
+      if (!isStr(c.name)) throw new Error(pos + "Feld \"name\" fehlt.");
+      if (!isStr(c.branche)) throw new Error(pos + "Feld \"branche\" fehlt (" + c.name + ").");
+      if (!isNum(c.mitarbeiter)) throw new Error(pos + "\"mitarbeiter\" muss eine Zahl sein (" + c.name + ").");
+      if (!isNum(c.umsatzMio)) throw new Error(pos + "\"umsatzMio\" muss eine Zahl sein (" + c.name + ").");
+      var id = c.id !== undefined && c.id !== null ? c.id : i + 1;
+      if (ids[id]) throw new Error(pos + "id \"" + id + "\" kommt doppelt vor.");
+      ids[id] = true;
+      var acts = c.activities === undefined ? [] : c.activities;
+      if (!Array.isArray(acts)) throw new Error(pos + "\"activities\" muss eine Liste sein (" + c.name + ").");
+      var q = c.quellen && typeof c.quellen === "object" ? c.quellen : {};
+      var h = c.hinweise && typeof c.hinweise === "object" ? c.hinweise : {};
+      return {
+        id: id, name: c.name, branche: c.branche, land: str(c.land, "–"),
+        mitarbeiter: c.mitarbeiter, umsatzMio: c.umsatzMio,
+        hinweise: { mitarbeiter: str(h.mitarbeiter, ""), umsatz: str(h.umsatz, "") },
+        quellen: { branche: str(q.branche, "unbekannt"), mitarbeiter: str(q.mitarbeiter, "unbekannt"), umsatz: str(q.umsatz, "unbekannt") },
+        activities: acts.map(function (a, j) {
+          if (!a || typeof a !== "object") throw new Error(pos + "Aktivität " + (j + 1) + " ist kein Objekt (" + c.name + ").");
+          return {
+            datum: str(a.datum, ""), typ: str(a.typ, "Aktivität"),
+            status: a.status === "offen" ? "offen" : "erledigt", text: str(a.text, "")
+          };
+        })
+      };
+    });
+  }
+
+  function showImportMsg(text, isError) {
+    var m = $("importMsg");
+    m.textContent = text;
+    m.hidden = !text;
+    m.className = "import-msg" + (isError ? " error" : "");
+  }
+
+  $("file").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onerror = function () { showImportMsg("Datei konnte nicht gelesen werden.", true); };
+    reader.onload = function () {
+      try {
+        var list = validate(csvToCustomers(decode(reader.result)));
+        setData(list);
+        $("badge").textContent = "Eigene Daten: " + f.name + " (nur lokal im Browser)";
+        $("resetData").hidden = false;
+        showImportMsg(list.length + " Kunden geladen.", false);
+        addMsg("Neue Daten geladen: " + list.length + " Kunden.", "bot");
+      } catch (err) {
+        showImportMsg(err.message, true);
+      }
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
+  $("resetData").addEventListener("click", function () {
+    setData(demoData);
+    $("badge").textContent = "Prototyp mit Beispieldaten";
+    $("resetData").hidden = true;
+    showImportMsg("", false);
+    addMsg("Zurück zu den Beispieldaten.", "bot");
   });
 
   // ---- Copilot (Mock, regelbasiert) ----
@@ -186,5 +381,5 @@
     $("q").value = "";
   });
 
-  render();
+  setData(demoData);
 })();
