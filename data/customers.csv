@@ -1,0 +1,15 @@
+﻿id;name;branche;land;mitarbeiter;umsatzMio;quelle_branche;quelle_mitarbeiter;quelle_umsatz;aktivitaet_datum;aktivitaet_typ;aktivitaet_status;aktivitaet_text
+1;Nordwind Maschinenbau AG;Industrie;DE;4200;980;Wikipedia;LinkedIn;Salesforce;2026-04-28;Meeting;offen;Workshop Hybrid-Cloud-Strategie
+1;Nordwind Maschinenbau AG;Industrie;DE;4200;980;Wikipedia;LinkedIn;Salesforce;2026-04-10;E-Mail;erledigt;Angebot Automation verschickt
+2;Alpenbank Holding;Finanzen;CH;8900;3100;Wikipedia;Web;Salesforce;2026-05-05;Call;offen;Security-Review mit CISO
+2;Alpenbank Holding;Finanzen;CH;8900;3100;Wikipedia;Web;Salesforce;2026-03-18;Meeting;erledigt;Kick-off Mainframe-Modernisierung
+3;Rheinpharm GmbH;Pharma;DE;2600;740;Wikipedia;LinkedIn;Web;2026-04-30;Demo;offen;watsonx Demo für R&D
+4;Hansa Logistik SE;Logistik;DE;15300;2200;Wikipedia;LinkedIn;Salesforce;2026-04-22;Meeting;erledigt;Lieferketten-Transparenz Use Case
+4;Hansa Logistik SE;Logistik;DE;15300;2200;Wikipedia;LinkedIn;Salesforce;2026-05-12;Call;offen;Budgetrunde Q3
+5;Tiroler Energie AG;Energie;AT;3100;1250;Web;LinkedIn;Salesforce;2026-04-15;E-Mail;erledigt;Referenzfall Netzmonitoring gesendet
+6;Bavaria Automotive Systems;Automobil;DE;21000;5400;Wikipedia;Wikipedia;Salesforce;2026-05-02;Meeting;offen;Executive Briefing Edge-Computing
+6;Bavaria Automotive Systems;Automobil;DE;21000;5400;Wikipedia;Wikipedia;Salesforce;2026-04-01;Demo;erledigt;Instana Proof of Concept
+7;Zürcher Versicherung;Finanzen;CH;5600;1900;Wikipedia;LinkedIn;Web;2026-05-08;Call;offen;Follow-up Compliance-Anforderungen
+8;Mittelland Handel GmbH;Handel;DE;950;210;Web;LinkedIn;Salesforce;2026-03-30;Meeting;erledigt;Erstgespräch E-Commerce-Plattform
+9;Donau Medizintechnik;Pharma;AT;1800;430;Wikipedia;Web;Salesforce;2026-05-14;Demo;offen;KI-gestützte Qualitätsprüfung
+10;Stadtwerke Elbtal;Energie;DE;1200;380;Web;Web;Salesforce;2026-04-25;E-Mail;offen;Angebot Observability nachfassen
